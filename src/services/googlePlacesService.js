@@ -1,4 +1,4 @@
-import { GOOGLE_PLACES_API_KEY } from "./googleConfig";
+const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY;
 
 export async function fetchNearbyGooglePlaces(lat, lng) {
   const response = await fetch(

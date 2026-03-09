@@ -1,6 +1,5 @@
 import { saveLastWeather } from "./localStorage";
-
-const API_KEY = "38fdf0618f97e6dccb31a876df33fec7";
+const API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_KEY;
 
 export async function fetchWeather(lat, lon) {
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
