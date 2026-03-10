@@ -10,17 +10,36 @@ import useLocation from "../hooks/useLocation";
 import { fetchWeather } from "../services/weatherService";
 import { getLastWeather } from "../services/localStorage";
 import { getRecommendation } from "../services/recommendationService";
+import { auth, db } from "../services/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function HomeScreen() {
   const { location, errorMsg } = useLocation();
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [name, setName] = useState("");
   const [currentTime, setCurrentTime] = useState(
     new Date().toLocaleTimeString([], {
       hour: "numeric",
       minute: "2-digit",
     }),
   );
+
+  useEffect(() => {
+    async function loadUser() {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const userRef = doc(db, "users", user.uid);
+      const snapshot = await getDoc(userRef);
+
+      if (snapshot.exists()) {
+        setName(snapshot.data().name);
+      }
+    }
+
+    loadUser();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -69,10 +88,11 @@ export default function HomeScreen() {
   const recommendation = weather
     ? getRecommendation(weather.condition, weather.temp)
     : null;
-
+  const user = auth.currentUser;
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Smart City</Text>
+      <Text style={styles.subtitle}>Welcome back, {name}!</Text>
 
       {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
@@ -137,6 +157,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
+    marginBottom: 20,
+  },
+  subtitle: {
+    fontSize: 24,
+    fontWeight: "500",
     marginBottom: 20,
   },
   card: {
