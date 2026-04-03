@@ -161,35 +161,41 @@ export default function AddEventModal({
 
             <Text style={styles.sectionLabel}>Choose Saved Place</Text>
 
-            <FlatList
-              horizontal
-              data={savedPlaces}
-              keyExtractor={(item) => item.id}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8 }}
-              renderItem={({ item }) => {
-                const isSelected = selectedPlace?.id === item.id;
+            {savedPlaces && savedPlaces.length > 0 ? (
+              <FlatList
+                horizontal
+                data={savedPlaces}
+                keyExtractor={(item) => item.id}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingBottom: 6 }}
+                renderItem={({ item }) => {
+                  const isSelected = selectedPlace?.id === item.id;
 
-                return (
-                  <TouchableOpacity
-                    style={[
-                      styles.placeChip,
-                      isSelected && styles.selectedPlaceChip,
-                    ]}
-                    onPress={() => setSelectedPlace(item)}
-                  >
-                    <Text
+                  return (
+                    <TouchableOpacity
                       style={[
-                        styles.placeChipText,
-                        isSelected && styles.selectedPlaceChipText,
+                        styles.placeChip,
+                        isSelected && styles.selectedPlaceChip,
                       ]}
+                      onPress={() => setSelectedPlace(item)}
                     >
-                      {item.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
+                      <Text
+                        style={[
+                          styles.placeChipText,
+                          isSelected && styles.selectedPlaceChipText,
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            ) : (
+              <Text style={styles.emptySavedPlacesText}>
+                No saved places available yet.
+              </Text>
+            )}
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
@@ -331,5 +337,9 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "white",
     fontWeight: "700",
+  },
+  emptySavedPlacesText: {
+    color: "#666",
+    marginBottom: 12,
   },
 });

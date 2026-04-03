@@ -15,7 +15,7 @@ export default function LoginScreen({ navigation }) {
 
   async function handleLogin() {
     try {
-      await loginUser(email, password);
+      await loginUser(email.trim(), password);
     } catch (error) {
       Alert.alert("Login failed", error.message);
     }

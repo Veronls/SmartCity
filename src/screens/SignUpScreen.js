@@ -16,7 +16,7 @@ export default function SignUpScreen() {
 
   async function handleSignUp() {
     try {
-      await registerUser(name, email, password);
+      await registerUser(name.trim(), email.trim(), password);
     } catch (error) {
       Alert.alert("Sign up failed", error.message);
     }

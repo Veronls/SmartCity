@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,14 +10,18 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import WeekCalendar from "../components/WeekCalendar";
 import PlannerEventCard from "../components/PlannerEventCard";
 import AddEventModal from "../components/AddEventModal";
 import {
   addWeeks,
   formatDateKey,
+  getStartOfWeek,
   getWeekDates,
   sortEventsByTime,
 } from "../services/calendarUtils";
@@ -43,6 +47,7 @@ export default function PlannerScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekEntries, setWeekEntries] = useState({});
   const [loading, setLoading] = useState(true);
+  const [weekSwitching, setWeekSwitching] = useState(false);
 
   const [dayEntry, setDayEntry] = useState(null);
   const [dayWeather, setDayWeather] = useState(null);
@@ -55,13 +60,23 @@ export default function PlannerScreen() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [savingJournal, setSavingJournal] = useState(false);
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const weekDates = useMemo(() => getWeekDates(weekBaseDate), [weekBaseDate]);
   const selectedDateKey = formatDateKey(selectedDate);
+  const hasLoadedInitially = useRef(false);
+  const manualDateJumpRef = useRef(false);
 
   useEffect(() => {
     async function loadWeekData() {
       try {
-        setLoading(true);
+        const isInitialLoad = !hasLoadedInitially.current;
+
+        if (isInitialLoad) {
+          setLoading(true);
+        } else {
+          setWeekSwitching(true);
+        }
 
         const cached = await getCachedWeekPlannerEntries(weekDates);
         if (cached) {
@@ -71,10 +86,13 @@ export default function PlannerScreen() {
         const fresh = await getWeekPlannerEntries(weekDates);
         setWeekEntries(fresh);
         await cacheWeekPlannerEntries(weekDates, fresh);
+
+        hasLoadedInitially.current = true;
       } catch (error) {
         console.log("Planner week load error:", error.message);
       } finally {
         setLoading(false);
+        setWeekSwitching(false);
       }
     }
 
@@ -97,18 +115,30 @@ export default function PlannerScreen() {
     loadDayData();
   }, [weekEntries, selectedDateKey, selectedDate]);
 
-  useEffect(() => {
-    async function loadSavedPlaces() {
-      try {
-        const places = await getSavedPlacesForPlanner();
-        setSavedPlaces(places);
-      } catch (error) {
-        console.log("Planner saved places load error:", error.message);
-      }
+  async function loadSavedPlaces() {
+    try {
+      const places = await getSavedPlacesForPlanner();
+      setSavedPlaces(places);
+    } catch (error) {
+      console.log("Planner saved places load error:", error.message);
     }
+  }
 
+  useEffect(() => {
     loadSavedPlaces();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedPlaces();
+    }, []),
+  );
+
+  useEffect(() => {
+    if (modalVisible) {
+      loadSavedPlaces();
+    }
+  }, [modalVisible]);
 
   useEffect(() => {
     async function loadWeatherForSelectedDay() {
@@ -133,6 +163,30 @@ export default function PlannerScreen() {
 
     loadWeatherForSelectedDay();
   }, [location, selectedDate]);
+
+  useEffect(() => {
+    if (manualDateJumpRef.current) {
+      manualDateJumpRef.current = false;
+      return;
+    }
+
+    const newWeekDates = getWeekDates(weekBaseDate);
+    const currentDayIndex =
+      selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1;
+    setSelectedDate(newWeekDates[currentDayIndex]);
+  }, [weekBaseDate]);
+
+  function handleCalendarChange(event, pickedDate) {
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+
+    if (!pickedDate) return;
+
+    manualDateJumpRef.current = true;
+    setSelectedDate(pickedDate);
+    setWeekBaseDate(getStartOfWeek(pickedDate));
+  }
 
   async function handleAddOrUpdateEvent(event) {
     try {
@@ -246,7 +300,57 @@ export default function PlannerScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Weekly Planner</Text>
+        <View style={styles.titleRow}>
+          <View>
+            <Text style={styles.title}>Weekly Planner</Text>
+            <Text style={styles.selectedDateText}>
+              {selectedDate.toLocaleDateString([], {
+                weekday: "long",
+                month: "short",
+                day: "numeric",
+              })}
+            </Text>
+          </View>
+
+          <View style={styles.titleActions}>
+            {weekSwitching ? <ActivityIndicator size="small" /> : null}
+
+            <TouchableOpacity
+              style={styles.calendarButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.calendarButtonText}>
+                <Image
+                  source={require("../images/calender.png")}
+                  style={styles.calendarIcon}
+                />
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {showDatePicker && (
+          <View style={styles.datePickerOverlay}>
+            <View style={styles.datePickerContainer}>
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                onChange={handleCalendarChange}
+              />
+
+              {/* Close button (important for iOS) */}
+              {Platform.OS === "ios" && (
+                <TouchableOpacity
+                  style={styles.closePickerButton}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.closePickerText}>Done</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
 
         <WeekCalendar
           weekDates={weekDates}
@@ -397,10 +501,37 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 30,
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  titleActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   title: {
     fontSize: 28,
     fontWeight: "700",
-    marginBottom: 16,
+  },
+  selectedDateText: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  calendarButton: {
+    backgroundColor: "black",
+    borderRadius: 12,
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calendarButtonText: {
+    fontSize: 20,
+    color: "white",
   },
   card: {
     backgroundColor: "white",
@@ -500,5 +631,42 @@ const styles = StyleSheet.create({
   saveJournalButtonText: {
     color: "white",
     fontWeight: "700",
+  },
+  calendarIcon: {
+    width: 32,
+    height: 32,
+    paddingTop: 5,
+  },
+  datePickerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+
+  datePickerContainer: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    width: "90%",
+    alignItems: "center",
+  },
+
+  closePickerButton: {
+    marginTop: 10,
+    backgroundColor: "#222",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+
+  closePickerText: {
+    color: "white",
+    fontWeight: "600",
   },
 });

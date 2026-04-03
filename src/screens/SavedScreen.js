@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
-  FlatList,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -71,45 +71,119 @@ export default function SavedScreen() {
     );
   }
 
+  function getGroupLabel(place) {
+    const address = (place.address || "").trim();
+
+    if (!address) {
+      return "Places around Other Locations";
+    }
+
+    const parts = address
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (parts.length === 0) {
+      return "Places around Other Locations";
+    }
+
+    const country = parts[parts.length - 1];
+
+    // Try to find city
+    // Common Google formatted addresses look like:
+    // "10355 152 St, Surrey, BC V3R 7C1, Canada"
+    // So city is often second item if address is detailed enough.
+    let city = "";
+
+    if (parts.length >= 2) {
+      city = parts[1];
+    }
+
+    // Fallbacks if structure is unusual
+    if (!city && parts.length >= 3) {
+      city = parts[parts.length - 3];
+    }
+
+    if (!city && parts.length >= 2) {
+      city = parts[0];
+    }
+
+    const normalizedCountry = country.toLowerCase();
+
+    if (normalizedCountry === "canada") {
+      return `Places around ${city || "Canada"}`;
+    }
+
+    return `Places around ${city || country}, ${country}`;
+  }
+
+  const groupedSections = useMemo(() => {
+    const grouped = {};
+
+    for (const place of places) {
+      const label = getGroupLabel(place);
+
+      if (!grouped[label]) {
+        grouped[label] = [];
+      }
+
+      grouped[label].push(place);
+    }
+
+    return Object.keys(grouped)
+      .sort()
+      .map((title) => ({
+        title,
+        data: grouped[title],
+      }));
+  }, [places]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Saved Places</Text>
 
-      <FlatList
-        data={places}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={<Text>No saved places yet.</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            {renderPhoto(item.photoUrl)}
+      {groupedSections.length === 0 ? (
+        <Text>No saved places yet.</Text>
+      ) : (
+        <SectionList
+          sections={groupedSections}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section: { title } }) => (
+            <Text style={styles.sectionTitle}>{title}</Text>
+          )}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              {renderPhoto(item.photoUrl)}
 
-            <View style={styles.textWrap}>
-              <Text style={styles.placeName}>{item.name}</Text>
-              <Text style={styles.placeCategory}>
-                {(item.category || "place").replace(/_/g, " ")}
-              </Text>
-              <Text style={styles.placeAddress}>{item.address}</Text>
+              <View style={styles.textWrap}>
+                <Text style={styles.placeName}>{item.name}</Text>
+                <Text style={styles.placeCategory}>
+                  {(item.category || "place").replace(/_/g, " ")}
+                </Text>
+                <Text style={styles.placeAddress}>{item.address}</Text>
 
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.directionsButton}
-                  onPress={() => handleDirections(item)}
-                >
-                  <Text style={styles.buttonText}>Directions</Text>
-                </TouchableOpacity>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={styles.directionsButton}
+                    onPress={() => handleDirections(item)}
+                  >
+                    <Text style={styles.buttonText}>Directions</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDelete(item.id)}
-                >
-                  <Text style={styles.buttonText}>Delete</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDelete(item.id)}
+                  >
+                    <Text style={styles.buttonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        )}
-      />
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -125,6 +199,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 10,
+    marginTop: 10,
+    color: "#222",
   },
   card: {
     backgroundColor: "#f4f4f4",
