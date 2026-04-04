@@ -191,7 +191,7 @@ export default function SavedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f7f7f7",
+    backgroundColor: "#fff",
     paddingHorizontal: 16,
     paddingTop: 40,
   },
