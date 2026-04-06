@@ -18,6 +18,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import WeekCalendar from "../components/WeekCalendar";
 import PlannerEventCard from "../components/PlannerEventCard";
 import AddEventModal from "../components/AddEventModal";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "../components/ThemeContext";
 import {
   addWeeks,
   formatDateKey,
@@ -66,6 +68,8 @@ export default function PlannerScreen() {
   const selectedDateKey = formatDateKey(selectedDate);
   const hasLoadedInitially = useRef(false);
   const manualDateJumpRef = useRef(false);
+  
+  
 
   useEffect(() => {
     async function loadWeekData() {
