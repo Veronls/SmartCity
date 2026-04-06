@@ -5,7 +5,7 @@ import { logoutUser } from "../services/authService";
 
 export default function ProfileScreen() {
   const user = auth.currentUser;
-  const [theme, setTheme] = useState("light"); // 默认主题 light
+  const [theme, setTheme] = useState("light"); 
 
   async function handleLogout() {
     try {
@@ -19,7 +19,7 @@ export default function ProfileScreen() {
     setTheme(selectedTheme);
   }
 
-  // 根据主题设置样式
+
   const themeStyles = theme === "dark" ? darkStyles : lightStyles;
 
   return (
